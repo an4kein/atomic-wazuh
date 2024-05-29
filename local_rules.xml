@@ -1,0 +1,221 @@
+<group name="custom_credential_dumping_detection_T1003.001-1">
+  <!-- Regra base para detectar criação de processo de dump de credenciais -->
+  <rule id="93000" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.system.eventID">1</field>
+    <field name="win.eventdata.originalFileName">procdump</field>
+    <options>no_full_log</options>
+    <description>T1003.001-1: O processo de criação detectado é o ProcDump</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+
+  <!-- Regra para detectar lsass.exe como alvo -->
+  <rule id="93001" level="12">
+    <if_sid>93000</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)procdump\.exe.*-ma\s+lsass\.exe</field>
+    <options>no_full_log</options>
+    <description>T1003.001-1: ProcDump executando para criar MiniDump de lsass</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+</group>
+
+
+<group name="custom_credential_dumping_detection_T1003.001-2">
+  <!-- Regra base para detectar criação de processo com a regra de dump de credenciais -->
+  <rule id="92080" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.system.message" type="pcre2">(?i)Process Create:\r\nRuleName: Credential Dumping Detection</field>
+    <options>no_full_log</options>
+    <description>T1003.001-2: Processo de criação detectado com a regra de detecção de dump de credenciais usando comsvcs.dll</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+
+  <!-- Regra para detectar PowerShell.exe -->
+  <rule id="92081" level="6">
+    <if_sid>92080</if_sid>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)PowerShell\.EXE</field>
+    <options>no_full_log</options>
+    <description>T1003.001-2: O processo de criação detectado é um PowerShell</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+
+  <!-- Regra para detectar linha de comando específica do PowerShell -->
+  <rule id="92082" level="12">
+    <if_sid>92081</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)powershell\.exe.*rundll32\.exe\sC:\\\\windows\\\\System32\\\\comsvcs\.dll,\sMiniDump\s\(Get-Process\slsass\)\.id\s\$env:TEMP\\\\lsass-comsvcs\.dmp\sfull</field>
+    <options>no_full_log</options>
+    <description>T1003.001-2: PowerShell executando rundll32 para criar MiniDump de lsass usando comsvcs.dll</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+</group>
+
+<group name="custom_credential_dumping_detection_T1003.001-3">
+  <!-- Regra base para detectar a criação de processo com cmd.exe -->
+  <rule id="93010" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.system.eventID">1</field>
+    <field name="win.eventdata.originalFileName">Cmd.Exe</field>
+    <options>no_full_log</options>
+    <description>T1059.003: O processo cmd.exe foi criado</description>
+    <mitre>
+      <id>T1059.003</id>
+    </mitre>
+  </rule>
+
+  <!-- Regra para detectar o uso específico do cmd.exe para execução do Outflank-Dumpert.exe -->
+  <rule id="93011" level="12">
+    <if_sid>93010</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)cmd\.exe.*Outflank-Dumpert\.exe</field>
+    <options>no_full_log</options>
+    <description>T1003.001-3: cmd.exe executando Outflank-Dumpert.exe para fazer dump de LSASS</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+</group>
+
+  <!-- T1003.001-4
+  PS C:\AtomicRedTeam\ExternalPayloads> Invoke-AtomicTest T1003.001 -TestNumbers 4
+  PathToAtomicsFolder = C:\AtomicRedTeam\atomics
+
+  Executing test: T1003.001-4 Dump LSASS.exe Memory using NanoDump
+  This version of C:\AtomicRedTeam\ExternalPayloads\nanodump.x64.exe is not compatible with the version of Windows you're running. 
+  Check your computer's system information and then contact the software publisher.
+  Exit code: 1
+  Done executing test: T1003.001-4 Dump LSASS.exe Memory using NanoDump
+  -->
+
+  <!-- T1003.001-5
+  PS C:\AtomicRedTeam\ExternalPayloads> Invoke-AtomicTest T1003.001 -TestNumbers 4
+  PathToAtomicsFolder = C:\AtomicRedTeam\atomics
+  -->
+
+<group name="custom_credential_dumping_detection_T1003.001-6">
+
+  <!-- Nova regra personalizada -->
+  <rule id="93017" level="13">
+    <if_sid>92900</if_sid>
+    <field name="win.eventdata.sourceImage" type="pcre2">(?i)(mimikatz|procdump|taskmgr|powershell|cmd|wmic)\.(exe|dll|ps1)</field>
+    <options>no_full_log</options>
+    <description>T1003.001-6: Roubo de Credenciais Offline com Mimikatz - O processo lsass foi acessado por $(win.eventdata.sourceImage) com permissões de leitura, possível dump de credenciais.</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+
+</group>
+
+<group name="custom_credential_dumping_detection_T1003.001-7">
+  <!-- Regra base para detectar criação de processo que pode ser utilizado para dump de credenciais -->
+  <rule id="93019" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.system.eventID">1</field>
+    <field name="win.eventdata.originalFileName">python.exe</field>
+    <options>no_full_log</options>
+    <description>T1003.001-7: O processo de criação detectado é o Python</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+
+  <!-- Regra para detectar pypykatz como alvo -->
+  <rule id="93020" level="12">
+    <if_sid>93019</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)python\.exe.*pypykatz\s+live\s+lsa</field>
+    <options>no_full_log</options>
+    <description>T1003.001-7: Python executando pypykatz para dump de LSASS</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+</group>
+
+
+<!-- T1053 REGRAS -->
+
+<group name="custom_scheduled_task_detection_T1053.005-1">
+  <!-- Regra base para detectar a criação de processo com schtasks.exe -->
+  <rule id="93020" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.system.eventID">1</field>
+    <field name="win.eventdata.originalFileName">schtasks.exe</field>
+    <options>no_full_log</options>
+    <description>T1053.005: O processo schtasks.exe foi criado</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+  </rule>
+
+  <!-- Regra para detectar o uso específico do schtasks.exe para criar uma tarefa agendada maliciosa -->
+  <rule id="93021" level="12">
+    <if_sid>93020</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)schtasks\s+\/create\s+\/tn\s+\\"T1053_005_OnStartup\\"\s+\/sc\s+onstart\s+\/ru\s+system\s+\/tr\s+\\"cmd\.exe\s+\/c\s+calc\.exe\\"</field>
+    <options>no_full_log</options>
+    <description>T1053.005-1: Scheduled Task Startup Script - schtasks.exe criando uma tarefa agendada maliciosa para executar calc.exe</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+  </rule>
+</group>
+
+<group name="custom_scheduled_task_detection_T1053.005-2">
+  
+  <!-- Regra base para detectar a criação de processo com schtasks.exe -->
+  <rule id="93060" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.system.eventID">1</field>
+    <field name="win.eventdata.originalFileName">schtasks.exe</field>
+    <options>no_full_log</options>
+    <description>T1053.005: O processo schtasks.exe foi criado</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+  </rule>
+
+  <!-- Regra para detectar o uso específico do schtasks.exe para criar uma tarefa agendada -->
+  <rule id="93061" level="12">
+    <if_sid>93060</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)schtasks\s+\/create\s+\/sc\s+once\s+\/tn\s+spawn\s+\/tr\s+.*\s+\/st\s+\d{2}:\d{2}</field>
+    <options>no_full_log</options>
+    <description>T1053.005-2: Scheduled task Local - schtasks.exe criando uma tarefa agendada</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+  </rule>
+  
+  <!-- Regra base para detectar o carregamento de taskschd.dll pelo schtasks.exe -->
+  <rule id="93062" level="0">
+    <if_group>sysmon_event7</if_group>
+    <field name="win.system.eventID">7</field>
+    <field name="win.eventdata.image">C:\\Windows\\System32\\schtasks.exe</field>
+    <field name="win.eventdata.imageLoaded">C:\\Windows\\System32\\taskschd.dll</field>
+    <options>no_full_log</options>
+    <description>T1053.005: schtasks.exe carregou taskschd.dll</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+  </rule>
+  
+  <!-- Regra para combinar ambos eventos -->
+  <rule id="93063" level="12">
+    <if_sid>93061</if_sid>
+    <if_sid>93062</if_sid>
+    <options>no_full_log</options>
+    <description>T1053.005-3: schtasks.exe criou uma tarefa agendada e carregou taskschd.dll</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+  </rule>
+
+</group>
+
